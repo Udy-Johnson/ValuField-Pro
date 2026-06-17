@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Core Security Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true);
+    }
+
+    function isOwner(userId) {
+      return isEmailVerified() && (request.auth.uid == userId);
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 3. Validation Helpers per Entity
+    function isValidProperty(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'valuationPurpose', 'status', 'createdAt', 'updatedAt']) &&
+             data.keys().size() <= 23 &&
+             data.id is string && isValidId(data.id) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 200 &&
+             data.valuationPurpose is string && (data.valuationPurpose == 'compensation' || data.valuationPurpose == 'other' || data.valuationPurpose == 'market' || data.valuationPurpose == 'rental') &&
+             data.status is string && (data.status == 'draft' || data.status == 'completed');
+    }
+
+    function isValidStateRate(data) {
+      return data.keys().hasAll(['id', 'userId', 'state', 'itemType', 'itemName', 'rate', 'unit', 'updatedAt']) &&
+             data.keys().size() <= 8 &&
+             data.id is string && isValidId(data.id) &&
+             data.userId is string &&
+             data.state is string && data.state.size() <= 100 &&
+             data.itemType is string &&
+             data.itemName is string && data.itemName.size() <= 200 &&
+             data.rate is number &&
+             data.unit is string;
+    }
+
+    function isValidComparable(data) {
+      return data.keys().hasAll(['id', 'userId', 'propertyType', 'areaName', 'sizeSqm', 'createdAt']) &&
+             data.keys().size() <= 10 &&
+             data.id is string && isValidId(data.id) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.propertyType is string &&
+             data.areaName is string && data.areaName.size() <= 150 &&
+             data.sizeSqm is number;
+    }
+
+    // 4. Match Blocks
+    
+    // Properties Collection
+    match /properties/{propertyId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isEmailVerified() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isEmailVerified() && 
+                       isValidId(propertyId) && 
+                       isValidProperty(incoming()) && 
+                       incoming().createdAt == request.time && 
+                       incoming().updatedAt == request.time;
+                       
+      allow update: if isEmailVerified() && 
+                       isValidId(propertyId) && 
+                       isOwner(existing().userId) && 
+                       isValidProperty(incoming()) && 
+                       incoming().createdAt == existing().createdAt && 
+                       incoming().updatedAt == request.time &&
+                       existing().status != 'completed'; // Lock completed files from direct client edits
+                       
+      allow delete: if isOwner(existing().userId) && 
+                       existing().status != 'completed';
+    }
+
+    // State Rates Collection (Shared / Uploadable State Rates)
+    match /stateRates/{rateId} {
+      allow read: if isEmailVerified();
+      
+      allow create: if isEmailVerified() && 
+                       isValidId(rateId) && 
+                       isValidStateRate(incoming()) && 
+                       incoming().userId == request.auth.uid &&
+                       incoming().updatedAt == request.time;
+                       
+      allow update: if isEmailVerified() && 
+                       isValidId(rateId) && 
+                       existing().userId == request.auth.uid && 
+                       isValidStateRate(incoming()) && 
+                       incoming().userId == existing().userId &&
+                       incoming().updatedAt == request.time;
+                       
+      allow delete: if isEmailVerified() && 
+                       existing().userId == request.auth.uid;
+    }
+
+    // Comparables Collection
+    match /comparables/{comparableId} {
+      allow get: if isEmailVerified() && (existing().userId == request.auth.uid || existing().userId == 'system');
+      allow list: if isEmailVerified() && (resource.data.userId == request.auth.uid || resource.data.userId == 'system');
+      
+      allow create: if isEmailVerified() && 
+                       isValidId(comparableId) && 
+                       isValidComparable(incoming()) && 
+                       incoming().createdAt == request.time;
+                       
+      allow update: if isEmailVerified() && 
+                       isValidId(comparableId) && 
+                       existing().userId == request.auth.uid && 
+                       isValidComparable(incoming()) && 
+                       incoming().createdAt == existing().createdAt;
+                       
+      allow delete: if isEmailVerified() && 
+                       existing().userId == request.auth.uid;
+    }
+  }
+}

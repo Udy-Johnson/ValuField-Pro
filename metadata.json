@@ -1,0 +1,6 @@
+{
+  "name": "Survey and Valuation Assistant",
+  "description": "Field surveyor report generator featuring AutoCAD-style polygon plot sketching, real-time Shoelace area calculation, GPS telemetry pinning, and document compensation rates parser.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

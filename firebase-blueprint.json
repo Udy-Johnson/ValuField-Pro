@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Property": {
+      "title": "Property",
+      "description": "Details of the property being inspected",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique document ID" },
+        "userId": { "type": "string", "description": "Owner userId" },
+        "name": { "type": "string", "description": "Property name" },
+        "address": { "type": "string", "description": "Property physical address" },
+        "valuerName": { "type": "string", "description": "Name of the valuer" },
+        "inspectionDate": { "type": "string", "description": "Date of inspection" },
+        "propertyType": { "type": "string", "description": "Residential, Commercial, Industrial, etc." },
+        "valuationPurpose": { "type": "string", "description": "compensation or other" },
+        "state": { "type": "string", "description": "State / region for compensation rate sheets" },
+        "notes": { "type": "string", "description": "General field notes" },
+        "latitude": { "type": "number", "description": "GPS coordinates latitude" },
+        "longitude": { "type": "number", "description": "GPS coordinates longitude" },
+        "polygonPoints": { "type": "array", "description": "JSON serialized coordinates of boundary nodes" },
+        "calculatedArea": { "type": "number", "description": "Calculated surface area from sketch" },
+        "calculatedPerimeter": { "type": "number", "description": "Calculated total perimeter from sketch" },
+        "overrideArea": { "type": "number", "description": "Manually overriden area measurement" },
+        "photoUrls": { "type": "array", "description": "URLs of snapshots taken in the field" },
+        "selectedRateId": { "type": "string", "description": "Linked state compensation rate item" },
+        "selectedComparableId": { "type": "string", "description": "Linked previous comparable valuation" },
+        "valuationAmount": { "type": "number", "description": "Calculated valuation amount" },
+        "status": { "type": "string", "description": "draft or completed" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "valuationPurpose", "status", "createdAt", "updatedAt"]
+    },
+    "StateRate": {
+      "title": "StateRate",
+      "description": "State rate sheet items for compensation calculations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Standard ID" },
+        "userId": { "type": "string", "description": "User who created/uploaded this rate, or 'system'" },
+        "state": { "type": "string", "description": "The state name" },
+        "itemType": { "type": "string", "description": "Crop, Building, Tree, Land, etc." },
+        "itemName": { "type": "string", "description": "Specific item name" },
+        "rate": { "type": "number", "description": "Compensation rate value" },
+        "unit": { "type": "string", "description": "unit of measurement" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "state", "itemType", "itemName", "rate", "unit", "updatedAt"]
+    },
+    "Comparable": {
+      "title": "Comparable",
+      "description": "Recent previous valuations in the area",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Comparable ID" },
+        "userId": { "type": "string", "description": "Owner identifier" },
+        "propertyType": { "type": "string", "description": "Type of property" },
+        "areaName": { "type": "string", "description": "Locality or neighborhood name" },
+        "sizeSqm": { "type": "number", "description": "Area of the parcel" },
+        "saleValue": { "type": "number", "description": "Recorded purchase value if any" },
+        "rentalValue": { "type": "number", "description": "Recorded monthly rental rate if any" },
+        "valuationDate": { "type": "string", "description": "Date of transaction / appraisal" },
+        "valuer": { "type": "string", "description": "Valuer for reference" },
+        "notes": { "type": "string", "description": "Comparable observations" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "propertyType", "areaName", "sizeSqm", "createdAt"]
+    }
+  },
+  "firestore": {
+    "properties/{propertyId}": {
+      "schema": "Property",
+      "description": "User properties drafts and field reports"
+    },
+    "stateRates/{rateId}": {
+      "schema": "StateRate",
+      "description": "Shared and private lookup lists for compensation rates"
+    },
+    "comparables/{comparableId}": {
+      "schema": "Comparable",
+      "description": "Historical appraisal inputs to benchmark rental/market values"
+    }
+  }
+}
